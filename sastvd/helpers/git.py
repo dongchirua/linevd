@@ -28,7 +28,7 @@ def gitdiff(old: str, new: str):
             str(newfile),
         ]
     )
-    process = svd.subprocess_cmd(cmd)
+    process = svd.subprocess_cmd(cmd, force_shell=True)
     os.remove(oldfile)
     os.remove(newfile)
     return process[0].decode()
