@@ -59,10 +59,10 @@ def glove(
         -vocab-file {VOCAB_FILE} \
         -verbose {VERBOSE}"
 
-    svd.watch_subprocess_cmd(cmd1, force_shell=False)
-    svd.watch_subprocess_cmd(cmd2, force_shell=False)
-    svd.watch_subprocess_cmd(cmd3, force_shell=False)
-    svd.watch_subprocess_cmd(cmd4, force_shell=False)
+    svd.watch_subprocess_cmd(cmd1, force_shell=True)
+    svd.watch_subprocess_cmd(cmd2, force_shell=True)
+    svd.watch_subprocess_cmd(cmd3, force_shell=True)
+    svd.watch_subprocess_cmd(cmd4, force_shell=True)
 
 
 def glove_dict(vectors_path, cache=True):
