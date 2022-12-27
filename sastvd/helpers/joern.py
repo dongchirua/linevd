@@ -84,7 +84,8 @@ def run_joern(filepath: str, verbose: int):
     filename = svd.external_dir() / filepath
     params = f"filename={filename}"
     command = f"joern --script {script_file} --params='{params}'"
-    command = str(svd.external_dir() / "joern-cli" / command)
+    # as joern is installed and added to PATHm, hence no need line 88 any more
+    # command = str(svd.external_dir() / "joern-cli" / command)
     if verbose > 2:
         svd.debug(command)
     svd.subprocess_cmd(command, verbose=verbose, force_shell=True)
