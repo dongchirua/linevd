@@ -87,7 +87,7 @@ def run_joern(filepath: str, verbose: int):
     command = str(svd.external_dir() / "joern-cli" / command)
     if verbose > 2:
         svd.debug(command)
-    svd.subprocess_cmd(command, verbose=verbose)
+    svd.subprocess_cmd(command, verbose=verbose, force_shell=True)
     try:
         shutil.rmtree(svd.external_dir() / "joern-cli" / "workspace" / filename.name)
     except Exception as E:
