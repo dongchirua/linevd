@@ -177,7 +177,7 @@ def get_node_edges(filepath: str, verbose=0):
         if type(e.outnode) == str:
             lineNum = linemap[e.innode]
             node_label = f"TYPE_{lineNum}: {typemap[int(e.outnode.split('_')[0])]}"
-            nodes = nodes.append(
+            nodes = nodes.concat(
                 {"id": e.outnode, "node_label": node_label, "lineNumber": lineNum},
                 ignore_index=True,
             )
