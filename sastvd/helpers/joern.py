@@ -1,14 +1,18 @@
 import json
 import random
 import shutil
+import warnings
 from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import sastvd as svd
 import scipy.sparse as sparse
 from graphviz import Digraph
+
+import sastvd as svd
+
+warnings.filterwarnings("ignore")
 
 
 def nodelabel2line(label: str):
@@ -177,7 +181,7 @@ def get_node_edges(filepath: str, verbose=0):
         if type(e.outnode) == str:
             lineNum = linemap[e.innode]
             node_label = f"TYPE_{lineNum}: {typemap[int(e.outnode.split('_')[0])]}"
-            nodes = nodes.concat(
+            nodes = nodes.append(
                 {"id": e.outnode, "node_label": node_label, "lineNumber": lineNum},
                 ignore_index=True,
             )
