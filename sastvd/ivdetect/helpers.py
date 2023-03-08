@@ -85,8 +85,8 @@ def feature_extraction(filepath):
     ast_nodes = ast_nodes[ast_nodes.lineNumber != ""]
     ast_nodes.lineNumber = ast_nodes.lineNumber.astype(int)
     ast_nodes["lineidx"] = ast_nodes.groupby("lineNumber").cumcount().values
-    ast_edges = ast_edges[ast_edges.line_out == ast_edges.line_in]
-    ast_dict = pd.Series(ast_nodes.lineidx.values, index=ast_nodes.id).to_dict()
+    ast_edges = ast_edges[ast_edges.line_out == ast_edges.line_in]  # AST sub-tree for a line
+    ast_dict = pd.Series(ast_nodes.lineidx.values, index=ast_nodes.id).to_dict()  # map node_id -> cumcount
     ast_edges.innode = ast_edges.innode.map(ast_dict)
     ast_edges.outnode = ast_edges.outnode.map(ast_dict)
     ast_edges = ast_edges.groupby("line_in").agg({"innode": list, "outnode": list})
@@ -117,6 +117,7 @@ def feature_extraction(filepath):
         ast[k] = [outnodes, innodes, v[2]]
 
     # 3. Variable names and types
+    # if node is a function, skip for now but _label is `METHOD_RETURN`
     reftype_edges = svdj.rdg(edges, "reftype")
     reftype_nodes = svdj.drop_lone_nodes(nodes, reftype_edges)
     reftype_nx = nx.Graph()
@@ -125,9 +126,16 @@ def feature_extraction(filepath):
     varnametypes = list()
     for cc in reftype_cc:
         cc_nodes = reftype_nodes[reftype_nodes.id.isin(cc)]
-        var_type = cc_nodes[cc_nodes["_label"] == "TYPE"].name.item()
+        try:
+            var_type = cc_nodes[cc_nodes["_label"] == "TYPE"].name.item()
+        except ValueError as ve:
+            if 'METHOD' in cc_nodes["_label"].tolist():
+                var_type = 'METHOD'
+        except Exception as e:
+            raise e
         for idrow in cc_nodes[cc_nodes["_label"] == "IDENTIFIER"].itertuples():
             varnametypes += [[idrow.lineNumber, var_type, idrow.name]]
+        del var_type
     nametypes = pd.DataFrame(varnametypes, columns=["lineNumber", "type", "name"])
     nametypes = nametypes.drop_duplicates().sort_values("lineNumber")
     nametypes.type = nametypes.type.apply(svdt.tokenise)
