@@ -79,6 +79,10 @@ def feature_extraction(filepath):
     subseq.code = subseq.code.apply(svdt.tokenise)
     subseq = subseq.set_index("lineNumber").to_dict()["code"]
 
+    if len(subseq.keys()) < 2:
+        # ignore point less line
+        raise Exception('data point has error during parsing process before!')
+
     # 2. Line to AST
     ast_edges = svdj.rdg(edges, "ast")
     ast_nodes = svdj.drop_lone_nodes(nodes, ast_edges)
