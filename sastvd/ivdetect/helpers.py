@@ -63,6 +63,13 @@ def feature_extraction(filepath):
     except:
         return None
 
+    # a file may include multiple file
+    # here will ignore this
+    check_df = nodes[('METHOD' == nodes['_label']) & ('' != nodes['lineNumber']) & (nodes['code'] != '<global>')]
+    if len(check_df) > 1:
+        print('data point include multiple functions')
+        return None
+
     # 1. Generate tokenised subtoken sequences
     subseq = (
         nodes.sort_values(by="code", key=lambda x: x.str.len(), ascending=False)
@@ -81,7 +88,8 @@ def feature_extraction(filepath):
 
     if len(subseq.keys()) < 2:
         # ignore point less line
-        raise Exception('data point has error during parsing process before!')
+        print('data point has error during parsing process before!')
+        return None
 
     # 2. Line to AST
     ast_edges = svdj.rdg(edges, "ast")
@@ -131,14 +139,27 @@ def feature_extraction(filepath):
     for cc in reftype_cc:
         cc_nodes = reftype_nodes[reftype_nodes.id.isin(cc)]
         try:
-            var_type = cc_nodes[cc_nodes["_label"] == "TYPE"].name.item()
+            type_node = cc_nodes[cc_nodes["_label"] == "TYPE"]
+            if len(type_node) > 1:
+                # there are 2 child nodes to express type
+                var_type = type_node.sort_values(by="code", key=lambda x: x.str.len(),
+                                                 ascending=False).head(1).name.item()
+            else:
+                var_type = type_node.name.item()
         except ValueError as ve:
             if 'METHOD' in cc_nodes["_label"].tolist():
+                # put if for more details. we don't use method
                 var_type = 'METHOD'
         except Exception as e:
+            print(filepath)
+            print(e)
+            print('>>> ### <<<')
             raise e
         for idrow in cc_nodes[cc_nodes["_label"] == "IDENTIFIER"].itertuples():
-            varnametypes += [[idrow.lineNumber, var_type, idrow.name]]
+            try:
+                varnametypes += [[idrow.lineNumber, var_type, idrow.name]]
+            except Exception as e:
+                print('hoho')
         del var_type
     nametypes = pd.DataFrame(varnametypes, columns=["lineNumber", "type", "name"])
     nametypes = nametypes.drop_duplicates().sort_values("lineNumber")
