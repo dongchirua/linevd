@@ -61,14 +61,17 @@ def feature_extraction(filepath):
     try:
         nodes, edges = svdj.get_node_edges(filepath)
     except:
-        return None
+        raise Exception(f'cannot get nodes, edges: {filepath}')
 
     # a file may include multiple file
     # here will ignore this
-    check_df = nodes[('METHOD' == nodes['_label']) & ('' != nodes['lineNumber']) & (nodes['code'] != '<global>')]
+    check_df = nodes[('METHOD' == nodes['_label'])
+                            & ('' != nodes['lineNumber'])
+                            & (nodes['code'] != '<global>')
+                            & (nodes['lineNumber'] != -1.0)]
     if len(check_df) > 1:
-        print('data point include multiple functions')
-        return None
+        # data point include multiple functions
+        raise Exception(f'data point include multiple functions: {filepath}')
 
     # 1. Generate tokenised subtoken sequences
     subseq = (
@@ -88,8 +91,7 @@ def feature_extraction(filepath):
 
     if len(subseq.keys()) < 2:
         # ignore point less line
-        print('data point has error during parsing process before!')
-        return None
+        raise Exception(f'data point has error during parsing process before!: {filepath}')
 
     # 2. Line to AST
     ast_edges = svdj.rdg(edges, "ast")
@@ -140,26 +142,30 @@ def feature_extraction(filepath):
         cc_nodes = reftype_nodes[reftype_nodes.id.isin(cc)]
         try:
             type_node = cc_nodes[cc_nodes["_label"] == "TYPE"]
-            if len(type_node) > 1:
+            if len(type_node.name) > 1:
                 # there are 2 child nodes to express type
                 var_type = type_node.sort_values(by="code", key=lambda x: x.str.len(),
                                                  ascending=False).head(1).name.item()
-            else:
+            elif len(type_node.name) == 1:
                 var_type = type_node.name.item()
-        except ValueError as ve:
+            else:
+                raise Exception('handle known exceptions')
+        except:
+            # because we will attach with IDENTIFIER
+            # hence, lines where variable is declared and defined are ignored
             if 'METHOD' in cc_nodes["_label"].tolist():
                 # put if for more details. we don't use method
                 var_type = 'METHOD'
-        except Exception as e:
-            print(filepath)
-            print(e)
-            print('>>> ### <<<')
-            raise e
+            elif 'TYPE_DECL' in cc_nodes["_label"].tolist():
+                # in case declare struct in local scope
+                var_type = 'TYPE_DECL'
+            else:
+                raise Exception(f'unknown error: {filepath}')
         for idrow in cc_nodes[cc_nodes["_label"] == "IDENTIFIER"].itertuples():
             try:
                 varnametypes += [[idrow.lineNumber, var_type, idrow.name]]
             except Exception as e:
-                print('hoho')
+                raise e
         del var_type
     nametypes = pd.DataFrame(varnametypes, columns=["lineNumber", "type", "name"])
     nametypes = nametypes.drop_duplicates().sort_values("lineNumber")
