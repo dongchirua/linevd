@@ -69,9 +69,9 @@ def feature_extraction(filepath):
                             & ('' != nodes['lineNumber'])
                             & (nodes['code'] != '<global>')
                             & (nodes['lineNumber'] != -1.0)]
-    if len(check_df) > 1:
-        # data point include multiple functions
-        raise Exception(f'data point include multiple functions: {filepath}')
+    # if len(check_df) > 1:
+    #     # data point include multiple functions
+    #     raise Exception(f'data point include multiple functions: {filepath}')
 
     # 1. Generate tokenised subtoken sequences
     subseq = (

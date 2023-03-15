@@ -23,6 +23,12 @@ class BigVulDataset:
         self.df = self.df[self.df.label == partition]
         self.df = self.df[self.df.id.isin(self.finished)]
 
+        # Filter out samples with no lineNumber from Joern output
+        self.df["valid"] = svd.dfmp(
+            self.df, BigVulDataset.check_validity, "id", desc="Validate Samples: "
+        )
+        self.df = self.df[self.df.valid]
+
         # Balance training set
         if partition == "train" or partition == "val":
             vul = self.df[self.df.vul == 1]
@@ -43,12 +49,6 @@ class BigVulDataset:
         # Filter only vulnerable
         if vulonly:
             self.df = self.df[self.df.vul == 1]
-
-        # Filter out samples with no lineNumber from Joern output
-        self.df["valid"] = svd.dfmp(
-            self.df, BigVulDataset.check_validity, "id", desc="Validate Samples: "
-        )
-        self.df = self.df[self.df.valid]
 
         # Get mapping from index to sample ID.
         self.df = self.df.reset_index(drop=True).reset_index()
