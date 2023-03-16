@@ -378,7 +378,7 @@ class IVDetect(nn.Module):
         feat_vec = self.connect(feat_vec)
 
         g.ndata["h"] = self.gcn(g, feat_vec)
-        batch_pooled = torch.empty(size=(0, 2)).to(self.dev)
+        # batch_pooled = torch.empty(size=(0, 2)).to(self.dev)
         # for g_i in dgl.unbatch(g):
         #     conv_output = g_i.ndata["h"]
         #     pooled = global_mean_pool(
@@ -388,7 +388,7 @@ class IVDetect(nn.Module):
         #         ),
         #     )
         #     batch_pooled = torch.cat([batch_pooled, pooled])
-        return batch_pooled
+        return dgl.mean_nodes(g, "h")
 
 
 class BigVulDatasetIVDetect(svddc.BigVulDataset):
