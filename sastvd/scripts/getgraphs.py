@@ -3,6 +3,7 @@ import pickle as pkl
 import sys
 
 import numpy as np
+
 import sastvd as svd
 import sastvd.helpers.datasets as svdd
 import sastvd.helpers.joern as svdj
@@ -41,18 +42,19 @@ def preprocess(row):
 
     # Run Joern on "before" code
     if not os.path.exists(f"{fpath1}.edges.json"):
-        svdj.full_run_joern(fpath1, verbose=3)
+        svdj.full_run_joern(fpath1, verbose=1)
 
     # Run Joern on "after" code
     if not os.path.exists(f"{fpath2}.edges.json") and len(row["diff"]) > 0:
-        svdj.full_run_joern(fpath2, verbose=3)
+        svdj.full_run_joern(fpath2, verbose=1)
 
+    # ignore SAST for now
     # Run SAST extraction
-    fpath3 = savedir_before / f"{row['id']}.c.sast.pkl"
-    if not os.path.exists(fpath3):
-        sast_before = sast.run_sast(row["before"])
-        with open(fpath3, "wb") as f:
-            pkl.dump(sast_before, f)
+    # fpath3 = savedir_before / f"{row['id']}.c.sast.pkl"
+    # if not os.path.exists(fpath3):
+    #     sast_before = sast.run_sast(row["before"])
+    #     with open(fpath3, "wb") as f:
+    #         pkl.dump(sast_before, f)
 
 
 if __name__ == "__main__":

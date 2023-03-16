@@ -12,3 +12,5 @@ hpc/logs/*
 **/*.pyc
 **/*.gzip
 **/workspace
+build
+.idea

@@ -1,14 +1,18 @@
 import json
 import random
 import shutil
+import warnings
 from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import sastvd as svd
 import scipy.sparse as sparse
 from graphviz import Digraph
+
+import sastvd as svd
+
+warnings.filterwarnings("ignore")
 
 
 def nodelabel2line(label: str):
@@ -84,10 +88,11 @@ def run_joern(filepath: str, verbose: int):
     filename = svd.external_dir() / filepath
     params = f"filename={filename}"
     command = f"joern --script {script_file} --params='{params}'"
-    command = str(svd.external_dir() / "joern-cli" / command)
+    # as joern is installed and added to PATHm, hence no need line 88 any more
+    # command = str(svd.external_dir() / "joern-cli" / command)
     if verbose > 2:
         svd.debug(command)
-    svd.subprocess_cmd(command, verbose=verbose)
+    svd.subprocess_cmd(command, verbose=verbose, force_shell=True)
     try:
         shutil.rmtree(svd.external_dir() / "joern-cli" / "workspace" / filename.name)
     except Exception as E:

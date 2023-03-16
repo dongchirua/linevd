@@ -61,7 +61,17 @@ def feature_extraction(filepath):
     try:
         nodes, edges = svdj.get_node_edges(filepath)
     except:
-        return None
+        raise Exception(f'cannot get nodes, edges: {filepath}')
+
+    # a file may include multiple file
+    # here will ignore this
+    check_df = nodes[('METHOD' == nodes['_label'])
+                            & ('' != nodes['lineNumber'])
+                            & (nodes['code'] != '<global>')
+                            & (nodes['lineNumber'] != -1.0)]
+    # if len(check_df) > 1:
+    #     # data point include multiple functions
+    #     raise Exception(f'data point include multiple functions: {filepath}')
 
     # 1. Generate tokenised subtoken sequences
     subseq = (
@@ -79,14 +89,18 @@ def feature_extraction(filepath):
     subseq.code = subseq.code.apply(svdt.tokenise)
     subseq = subseq.set_index("lineNumber").to_dict()["code"]
 
+    if len(subseq.keys()) < 2:
+        # ignore point less line
+        raise Exception(f'data point has error during parsing process before!: {filepath}')
+
     # 2. Line to AST
     ast_edges = svdj.rdg(edges, "ast")
     ast_nodes = svdj.drop_lone_nodes(nodes, ast_edges)
     ast_nodes = ast_nodes[ast_nodes.lineNumber != ""]
     ast_nodes.lineNumber = ast_nodes.lineNumber.astype(int)
     ast_nodes["lineidx"] = ast_nodes.groupby("lineNumber").cumcount().values
-    ast_edges = ast_edges[ast_edges.line_out == ast_edges.line_in]
-    ast_dict = pd.Series(ast_nodes.lineidx.values, index=ast_nodes.id).to_dict()
+    ast_edges = ast_edges[ast_edges.line_out == ast_edges.line_in]  # AST sub-tree for a line
+    ast_dict = pd.Series(ast_nodes.lineidx.values, index=ast_nodes.id).to_dict()  # map node_id -> cumcount
     ast_edges.innode = ast_edges.innode.map(ast_dict)
     ast_edges.outnode = ast_edges.outnode.map(ast_dict)
     ast_edges = ast_edges.groupby("line_in").agg({"innode": list, "outnode": list})
@@ -117,6 +131,7 @@ def feature_extraction(filepath):
         ast[k] = [outnodes, innodes, v[2]]
 
     # 3. Variable names and types
+    # if node is a function, skip for now but _label is `METHOD_RETURN`
     reftype_edges = svdj.rdg(edges, "reftype")
     reftype_nodes = svdj.drop_lone_nodes(nodes, reftype_edges)
     reftype_nx = nx.Graph()
@@ -125,9 +140,33 @@ def feature_extraction(filepath):
     varnametypes = list()
     for cc in reftype_cc:
         cc_nodes = reftype_nodes[reftype_nodes.id.isin(cc)]
-        var_type = cc_nodes[cc_nodes["_label"] == "TYPE"].name.item()
+        try:
+            type_node = cc_nodes[cc_nodes["_label"] == "TYPE"]
+            if len(type_node.name) > 1:
+                # there are 2 child nodes to express type
+                var_type = type_node.sort_values(by="code", key=lambda x: x.str.len(),
+                                                 ascending=False).head(1).name.item()
+            elif len(type_node.name) == 1:
+                var_type = type_node.name.item()
+            else:
+                raise Exception('handle known exceptions')
+        except:
+            # because we will attach with IDENTIFIER
+            # hence, lines where variable is declared and defined are ignored
+            if 'METHOD' in cc_nodes["_label"].tolist():
+                # put if for more details. we don't use method
+                var_type = 'METHOD'
+            elif 'TYPE_DECL' in cc_nodes["_label"].tolist():
+                # in case declare struct in local scope
+                var_type = 'TYPE_DECL'
+            else:
+                raise Exception(f'unknown error: {filepath}')
         for idrow in cc_nodes[cc_nodes["_label"] == "IDENTIFIER"].itertuples():
-            varnametypes += [[idrow.lineNumber, var_type, idrow.name]]
+            try:
+                varnametypes += [[idrow.lineNumber, var_type, idrow.name]]
+            except Exception as e:
+                raise e
+        del var_type
     nametypes = pd.DataFrame(varnametypes, columns=["lineNumber", "type", "name"])
     nametypes = nametypes.drop_duplicates().sort_values("lineNumber")
     nametypes.type = nametypes.type.apply(svdt.tokenise)
@@ -339,7 +378,7 @@ class IVDetect(nn.Module):
         feat_vec = self.connect(feat_vec)
 
         g.ndata["h"] = self.gcn(g, feat_vec)
-        batch_pooled = torch.empty(size=(0, 2)).to(self.dev)
+        # batch_pooled = torch.empty(size=(0, 2)).to(self.dev)
         # for g_i in dgl.unbatch(g):
         #     conv_output = g_i.ndata["h"]
         #     pooled = global_mean_pool(
@@ -349,7 +388,7 @@ class IVDetect(nn.Module):
         #         ),
         #     )
         #     batch_pooled = torch.cat([batch_pooled, pooled])
-        return batch_pooled
+        return dgl.mean_nodes(g, "h")
 
 
 class BigVulDatasetIVDetect(svddc.BigVulDataset):
